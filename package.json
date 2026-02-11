@@ -1,0 +1,20 @@
+{
+  "name": "n8nmcp",
+  "version": "1.0.0",
+  "description": "n8n MCP Server - Connect Claude to n8n workflows via Model Context Protocol",
+  "main": "index.js",
+  "scripts": {
+    "start": "n8n-mcp-server",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:18546/git/andrius-digital/n8nmcp"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@leonardsellem/n8n-mcp-server": "^0.1.8"
+  }
+}
