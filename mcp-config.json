@@ -5,7 +5,7 @@
       "args": ["node_modules/@leonardsellem/n8n-mcp-server/build/index.js"],
       "cwd": "/home/user/n8nmcp",
       "env": {
-        "N8N_API_URL": "http://localhost:5678/api/v1",
+        "N8N_API_URL": "https://cdlagency.app.n8n.cloud/api/v1",
         "N8N_API_KEY": "YOUR_N8N_API_KEY"
       },
       "disabled": false
