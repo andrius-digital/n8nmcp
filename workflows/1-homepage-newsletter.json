@@ -1,0 +1,104 @@
+{
+  "name": "BobbyLoads - Homepage Newsletter Signup",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "newsletter-signup",
+        "options": {
+          "responseMode": "onReceived",
+          "responseData": "allEntries"
+        }
+      },
+      "id": "webhook-newsletter",
+      "name": "Newsletter Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "newsletter-signup"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst fullName = body.name || body.full_name || '';\nconst firstName = fullName.split(' ')[0] || '';\nconst lastName = fullName.split(' ').slice(1).join(' ') || '';\nconst email = body.email || '';\n\nreturn [{\n  json: {\n    firstName,\n    lastName,\n    fullName,\n    email,\n    source: 'Homepage Newsletter',\n    submittedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "extract-newsletter",
+      "name": "Extract Form Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rest.gohighlevel.com/v1/contacts/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_GHL_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $json.email }}\",\n  \"firstName\": \"{{ $json.firstName }}\",\n  \"lastName\": \"{{ $json.lastName }}\",\n  \"tags\": [\"newsletter\", \"homepage\", \"bobbyloads\"],\n  \"source\": \"Homepage Newsletter\"\n}",
+        "options": {}
+      },
+      "id": "ghl-newsletter",
+      "name": "GHL: Bobby Loads Newsletter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "-1003784913452",
+        "text": "=📩 **New Newsletter Signup!**\n\n👤 **Name:** {{ $json.fullName }}\n📧 **Email:** {{ $json.email }}\n🕐 **Time:** {{ $json.submittedAt }}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram-newsletter",
+      "name": "Telegram: Newsletter Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [750, 120],
+      "credentials": {
+        "telegramApi": { "id": "TELEGRAM_CREDENTIAL_ID", "name": "Telegram Bot" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer re_Bbze8uXj_N7gDRQz9Eu1ueSnNZ4NYSrjo" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"BobbyLoads Notifications <noreply@ava.rankmehigher.com>\",\n  \"to\": [\"bobbyloads@gmail.com\"],\n  \"subject\": \"New Newsletter Signup: {{ $json.fullName }}\",\n  \"html\": \"<h2>New Newsletter Signup</h2><p><strong>Name:</strong> {{ $json.fullName }}</p><p><strong>Email:</strong> {{ $json.email }}</p><p><strong>Time:</strong> {{ $json.submittedAt }}</p>\"\n}",
+        "options": {}
+      },
+      "id": "email-newsletter",
+      "name": "Email: Notify Bobby",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 480]
+    }
+  ],
+  "connections": {
+    "Newsletter Webhook": {
+      "main": [[{ "node": "Extract Form Data", "type": "main", "index": 0 }]]
+    },
+    "Extract Form Data": {
+      "main": [[
+        { "node": "GHL: Bobby Loads Newsletter", "type": "main", "index": 0 },
+        { "node": "Telegram: Newsletter Alert", "type": "main", "index": 0 },
+        { "node": "Email: Notify Bobby", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "bobbyloads" }, { "name": "newsletter" }]
+}

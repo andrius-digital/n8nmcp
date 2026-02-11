@@ -128,6 +128,28 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [980, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer re_Bbze8uXj_N7gDRQz9Eu1ueSnNZ4NYSrjo" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"BobbyLoads Notifications <noreply@ava.rankmehigher.com>\",\n  \"to\": [\"bobbyloads@gmail.com\"],\n  \"subject\": \"New Direct Shippers Purchase: {{ $json.customerName }}\",\n  \"html\": \"<h2>New Direct Shippers Purchase!</h2><p><strong>Customer:</strong> {{ $json.customerName }}</p><p><strong>Email:</strong> {{ $json.customerEmail }}</p><p><strong>Phone:</strong> {{ $json.phone }}</p><p><strong>Amount:</strong> ${{ $json.amountTotal }} {{ $json.currency }}</p><p><strong>Stripe ID:</strong> {{ $json.stripeCustomerId }}</p><p><strong>Session:</strong> {{ $json.sessionId }}</p><p><strong>Time:</strong> {{ $json.purchaseDate }}</p>\"\n}",
+        "options": {}
+      },
+      "id": "email-purchase",
+      "name": "Email: Notify Bobby",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 660]
     }
   ],
   "connections": {
@@ -168,6 +190,11 @@
           },
           {
             "node": "Resend: Send CSV + Thank You",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email: Notify Bobby",
             "type": "main",
             "index": 0
           }

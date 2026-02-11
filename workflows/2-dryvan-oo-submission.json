@@ -1,0 +1,104 @@
+{
+  "name": "BobbyLoads - Dry Van OO Submission",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dryvan-oo-submit",
+        "options": {
+          "responseMode": "onReceived",
+          "responseData": "allEntries"
+        }
+      },
+      "id": "webhook-dryvan",
+      "name": "Dry Van OO Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "dryvan-oo-submit"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst fullName = body.name || body.full_name || '';\nconst firstName = fullName.split(' ')[0] || '';\nconst lastName = fullName.split(' ').slice(1).join(' ') || '';\nconst email = body.email || '';\nconst phone = body.phone || '';\nconst experience = body.experience || '';\nconst sapProgram = body.sap_program || body.sapProgram || '';\nconst truck = body.truck || body.truck_info || '';\n\nreturn [{\n  json: {\n    firstName,\n    lastName,\n    fullName,\n    email,\n    phone,\n    experience,\n    sapProgram,\n    truck,\n    source: 'Dry Van OO Application',\n    submittedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "extract-dryvan",
+      "name": "Extract Form Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rest.gohighlevel.com/v1/contacts/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_GHL_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $json.email }}\",\n  \"firstName\": \"{{ $json.firstName }}\",\n  \"lastName\": \"{{ $json.lastName }}\",\n  \"phone\": \"{{ $json.phone }}\",\n  \"tags\": [\"dry-van\", \"owner-operator\", \"application\", \"bobbyloads\"],\n  \"source\": \"Dry Van OO Application\",\n  \"customField\": {\n    \"experience\": \"{{ $json.experience }}\",\n    \"sap_program\": \"{{ $json.sapProgram }}\",\n    \"truck\": \"{{ $json.truck }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "ghl-dryvan",
+      "name": "GHL: Dryvan OO Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "-1003784913452",
+        "text": "=🚛 **New Dry Van OO Application!**\n\n👤 **Name:** {{ $json.fullName }}\n📧 **Email:** {{ $json.email }}\n📱 **Phone:** {{ $json.phone }}\n📋 **Experience:** {{ $json.experience }}\n🔧 **SAP Program:** {{ $json.sapProgram }}\n🚚 **Truck:** {{ $json.truck }}\n🕐 **Time:** {{ $json.submittedAt }}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram-dryvan",
+      "name": "Telegram: Dry Van Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [750, 120],
+      "credentials": {
+        "telegramApi": { "id": "TELEGRAM_CREDENTIAL_ID", "name": "Telegram Bot" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer re_Bbze8uXj_N7gDRQz9Eu1ueSnNZ4NYSrjo" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"BobbyLoads Notifications <noreply@ava.rankmehigher.com>\",\n  \"to\": [\"bobbyloads@gmail.com\"],\n  \"subject\": \"New Dry Van OO Application: {{ $json.fullName }}\",\n  \"html\": \"<h2>New Dry Van Owner Operator Application</h2><p><strong>Name:</strong> {{ $json.fullName }}</p><p><strong>Email:</strong> {{ $json.email }}</p><p><strong>Phone:</strong> {{ $json.phone }}</p><p><strong>Experience:</strong> {{ $json.experience }}</p><p><strong>SAP Program:</strong> {{ $json.sapProgram }}</p><p><strong>Truck:</strong> {{ $json.truck }}</p><p><strong>Time:</strong> {{ $json.submittedAt }}</p>\"\n}",
+        "options": {}
+      },
+      "id": "email-dryvan",
+      "name": "Email: Notify Bobby",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 480]
+    }
+  ],
+  "connections": {
+    "Dry Van OO Webhook": {
+      "main": [[{ "node": "Extract Form Data", "type": "main", "index": 0 }]]
+    },
+    "Extract Form Data": {
+      "main": [[
+        { "node": "GHL: Dryvan OO Pipeline", "type": "main", "index": 0 },
+        { "node": "Telegram: Dry Van Alert", "type": "main", "index": 0 },
+        { "node": "Email: Notify Bobby", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "bobbyloads" }, { "name": "dry-van" }, { "name": "owner-operator" }]
+}
