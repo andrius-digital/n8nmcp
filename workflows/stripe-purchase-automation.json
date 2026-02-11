@@ -1,0 +1,199 @@
+{
+  "name": "BobbyLoads Direct Shippers - Purchase Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe-webhook",
+        "options": {}
+      },
+      "id": "stripe-webhook",
+      "name": "Stripe Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "stripe-purchase-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-checkout-complete",
+              "leftValue": "={{ $json.body.type }}",
+              "rightValue": "checkout.session.completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-event",
+      "name": "Filter: checkout.session.completed",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract customer and purchase data from Stripe webhook\nconst event = $input.first().json.body;\nconst session = event.data.object;\n\nconst customerEmail = session.customer_details?.email || session.customer_email || '';\nconst customerName = session.customer_details?.name || '';\nconst firstName = customerName.split(' ')[0] || '';\nconst lastName = customerName.split(' ').slice(1).join(' ') || '';\nconst amountTotal = (session.amount_total / 100).toFixed(2);\nconst currency = (session.currency || 'usd').toUpperCase();\nconst paymentStatus = session.payment_status || '';\nconst stripeCustomerId = session.customer || '';\nconst sessionId = session.id || '';\nconst phone = session.customer_details?.phone || '';\n\nreturn [{\n  json: {\n    customerEmail,\n    customerName,\n    firstName,\n    lastName,\n    amountTotal,\n    currency,\n    paymentStatus,\n    stripeCustomerId,\n    sessionId,\n    phone,\n    purchaseDate: new Date().toISOString(),\n    product: 'Direct Shippers List'\n  }\n}];"
+      },
+      "id": "extract-data",
+      "name": "Extract Purchase Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [710, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHANNEL_ID",
+        "text": "=💰 **New Purchase on BobbyLoads!**\n\n👤 **Customer:** {{ $json.customerName }}\n📧 **Email:** {{ $json.customerEmail }}\n📱 **Phone:** {{ $json.phone }}\n💵 **Amount:** ${{ $json.amountTotal }} {{ $json.currency }}\n📦 **Product:** {{ $json.product }}\n🕐 **Date:** {{ $json.purchaseDate }}\n🔑 **Session:** {{ $json.sessionId }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-notify",
+      "name": "Telegram: Purchase Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [980, 140],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://rest.gohighlevel.com/v1/contacts/",
+        "options": {
+          "fullResponse": false
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer YOUR_GHL_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonParameters": true,
+        "bodyParametersJson": "={\n  \"email\": \"{{ $json.customerEmail }}\",\n  \"firstName\": \"{{ $json.firstName }}\",\n  \"lastName\": \"{{ $json.lastName }}\",\n  \"phone\": \"{{ $json.phone }}\",\n  \"tags\": [\"purchased\", \"direct-shippers\", \"bobbyloads\"],\n  \"source\": \"Stripe - BobbyLoads\",\n  \"customField\": {\n    \"stripe_customer_id\": \"{{ $json.stripeCustomerId }}\",\n    \"purchase_amount\": \"{{ $json.amountTotal }}\",\n    \"purchase_date\": \"{{ $json.purchaseDate }}\",\n    \"product\": \"{{ $json.product }}\"\n  }\n}"
+      },
+      "id": "ghl-contact",
+      "name": "GoHighLevel: Create Purchased Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"BobbyLoads <noreply@bobbyloads.com>\",\n  \"to\": [\"{{ $json.customerEmail }}\"],\n  \"subject\": \"Your Direct Shippers List is Here! 🚛\",\n  \"html\": \"<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'><h1 style='color: #2d3748;'>Thank You for Your Purchase, {{ $json.firstName }}! 🎉</h1><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>We truly appreciate your business! Attached you'll find your <strong>Direct Shippers List</strong> CSV file.</p><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>This list contains verified direct shippers that you can start reaching out to immediately. Each entry includes company name, contact info, and shipping details.</p><h3 style='color: #2d3748;'>Quick Tips:</h3><ul style='font-size: 15px; color: #4a5568; line-height: 1.8;'><li>Open the CSV file in Excel or Google Sheets</li><li>Start with shippers in your preferred lanes</li><li>Reach out via phone for the best response rates</li></ul><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>If you have any questions, don't hesitate to reach out!</p><p style='font-size: 16px; color: #4a5568;'>Best regards,<br><strong>The BobbyLoads Team</strong></p><hr style='border: 1px solid #e2e8f0; margin: 20px 0;'><p style='font-size: 12px; color: #a0aec0;'>Order ID: {{ $json.sessionId }}<br>Amount: ${{ $json.amountTotal }} {{ $json.currency }}</p></div>\",\n  \"attachments\": [\n    {\n      \"filename\": \"direct-shippers-list.csv\",\n      \"path\": \"YOUR_CSV_FILE_URL_HERE\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "resend-email",
+      "name": "Resend: Send CSV + Thank You",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 480],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RESEND_CREDENTIAL_ID",
+          "name": "Resend API Key"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Stripe Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter: checkout.session.completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: checkout.session.completed": {
+      "main": [
+        [
+          {
+            "node": "Extract Purchase Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Purchase Data": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Purchase Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GoHighLevel: Create Purchased Client",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Resend: Send CSV + Thank You",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "bobbyloads"
+    },
+    {
+      "name": "stripe"
+    },
+    {
+      "name": "automation"
+    }
+  ],
+  "triggerCount": 1
+}
