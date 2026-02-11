@@ -1,0 +1,163 @@
+{
+  "name": "BobbyLoads - Direct Shippers Purchase (Stripe)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe-webhook",
+        "options": {
+          "responseMode": "onReceived",
+          "responseData": "allEntries"
+        }
+      },
+      "id": "a1b1c1d1-0001-0001-0001-000000000001",
+      "name": "Stripe Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "stripe-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-checkout-complete",
+              "leftValue": "={{ $json.body.type }}",
+              "rightValue": "checkout.session.completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b1c1d1-0002-0002-0002-000000000002",
+      "name": "Filter: checkout.session.completed",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json.body;\nconst session = event.data.object;\n\nconst customerEmail = session.customer_details?.email || session.customer_email || '';\nconst customerName = session.customer_details?.name || '';\nconst firstName = customerName.split(' ')[0] || '';\nconst lastName = customerName.split(' ').slice(1).join(' ') || '';\nconst amountTotal = (session.amount_total / 100).toFixed(2);\nconst currency = (session.currency || 'usd').toUpperCase();\nconst stripeCustomerId = session.customer || '';\nconst sessionId = session.id || '';\nconst phone = session.customer_details?.phone || '';\nconst product = session.metadata?.product || 'Direct Shippers List';\nconst submittedAt = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });\n\nreturn [{\n  json: {\n    customerEmail,\n    customerName,\n    firstName,\n    lastName,\n    amountTotal,\n    currency,\n    stripeCustomerId,\n    sessionId,\n    phone,\n    product,\n    source: 'Stripe - BobbyLoads Direct Shippers',\n    tags: 'purchased,direct-shippers,bobbyloads',\n    submittedAt\n  }\n}];"
+      },
+      "id": "a1b1c1d1-0003-0003-0003-000000000003",
+      "name": "Extract Purchase Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [710, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/hooks/OVOTFM6RzxPM0J4WJBcp/webhook-trigger/b391c6df-444c-40c1-8f3d-bc725580ebfc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"firstName\": \"{{ $json.firstName }}\",\n  \"lastName\": \"{{ $json.lastName }}\",\n  \"phone\": \"{{ $json.phone }}\",\n  \"email\": \"{{ $json.customerEmail }}\",\n  \"amountTotal\": \"{{ $json.amountTotal }}\",\n  \"currency\": \"{{ $json.currency }}\",\n  \"product\": \"{{ $json.product }}\",\n  \"stripeCustomerId\": \"{{ $json.stripeCustomerId }}\",\n  \"sessionId\": \"{{ $json.sessionId }}\",\n  \"source\": \"{{ $json.source }}\",\n  \"tags\": \"{{ $json.tags }}\",\n  \"submittedAt\": \"{{ $json.submittedAt }}\"\n}",
+        "options": {}
+      },
+      "id": "a1b1c1d1-0004-0004-0004-000000000004",
+      "name": "GHL: Direct Shippers Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8579583220:AAEHGQeg7deZFyyMzIeSIxPWp-UZDlcBWlY/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"-1003784913452\",\n  \"text\": \"New Direct Shippers Purchase!\\n\\nCustomer: {{ $json.customerName }}\\nEmail: {{ $json.customerEmail }}\\nPhone: {{ $json.phone }}\\nAmount: ${{ $json.amountTotal }} {{ $json.currency }}\\nProduct: {{ $json.product }}\\nTime: {{ $json.submittedAt }}\"\n}",
+        "options": {}
+      },
+      "id": "a1b1c1d1-0005-0005-0005-000000000005",
+      "name": "Telegram: Purchase Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer re_Bbze8uXj_N7gDRQz9Eu1ueSnNZ4NYSrjo" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"BobbyLoads <noreply@ava.rankmehigher.com>\",\n  \"to\": [\"{{ $json.customerEmail }}\"],\n  \"subject\": \"Your Direct Shippers List is Here!\",\n  \"html\": \"<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px'><h1 style='color:#2d3748'>Thank You for Your Purchase, {{ $json.firstName }}!</h1><p style='font-size:16px;color:#4a5568;line-height:1.6'>We truly appreciate your business! Attached you will find your Direct Shippers List CSV file.</p><p style='font-size:16px;color:#4a5568;line-height:1.6'>This list contains verified direct shippers that you can start reaching out to immediately.</p><h3 style='color:#2d3748'>Quick Tips:</h3><ul style='font-size:15px;color:#4a5568;line-height:1.8'><li>Open the CSV file in Excel or Google Sheets</li><li>Start with shippers in your preferred lanes</li><li>Reach out via phone for the best response rates</li></ul><p style='font-size:16px;color:#4a5568;line-height:1.6'>If you have any questions, do not hesitate to reach out!</p><p style='font-size:16px;color:#4a5568'>Best regards,<br><b>The BobbyLoads Team</b></p></div>\",\n  \"attachments\": [{\"filename\": \"direct-shippers-list.csv\", \"path\": \"YOUR_CSV_FILE_URL_HERE\"}]\n}",
+        "options": {}
+      },
+      "id": "a1b1c1d1-0006-0006-0006-000000000006",
+      "name": "Resend: CSV + Thank You to Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer re_Bbze8uXj_N7gDRQz9Eu1ueSnNZ4NYSrjo" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"BobbyLoads Notifications <noreply@ava.rankmehigher.com>\",\n  \"to\": [\"bobbyloads@gmail.com\"],\n  \"subject\": \"New Direct Shippers Purchase: {{ $json.customerName }}\",\n  \"html\": \"<h2>New Direct Shippers Purchase!</h2><p><b>Customer:</b> {{ $json.customerName }}</p><p><b>Email:</b> {{ $json.customerEmail }}</p><p><b>Phone:</b> {{ $json.phone }}</p><p><b>Amount:</b> ${{ $json.amountTotal }} {{ $json.currency }}</p><p><b>Product:</b> {{ $json.product }}</p><p><b>Stripe ID:</b> {{ $json.stripeCustomerId }}</p><p><b>Time:</b> {{ $json.submittedAt }}</p>\"\n}",
+        "options": {}
+      },
+      "id": "a1b1c1d1-0007-0007-0007-000000000007",
+      "name": "Email: Notify Bobby",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 680]
+    }
+  ],
+  "connections": {
+    "Stripe Webhook": {
+      "main": [[{ "node": "Filter: checkout.session.completed", "type": "main", "index": 0 }]]
+    },
+    "Filter: checkout.session.completed": {
+      "main": [[{ "node": "Extract Purchase Data", "type": "main", "index": 0 }]]
+    },
+    "Extract Purchase Data": {
+      "main": [[
+        { "node": "GHL: Direct Shippers Pipeline", "type": "main", "index": 0 },
+        { "node": "Telegram: Purchase Alert", "type": "main", "index": 0 },
+        { "node": "Resend: CSV + Thank You to Customer", "type": "main", "index": 0 },
+        { "node": "Email: Notify Bobby", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
