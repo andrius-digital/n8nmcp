@@ -45,7 +45,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Extract customer and purchase data from Stripe webhook\nconst event = $input.first().json.body;\nconst session = event.data.object;\n\nconst customerEmail = session.customer_details?.email || session.customer_email || '';\nconst customerName = session.customer_details?.name || '';\nconst firstName = customerName.split(' ')[0] || '';\nconst lastName = customerName.split(' ').slice(1).join(' ') || '';\nconst amountTotal = (session.amount_total / 100).toFixed(2);\nconst currency = (session.currency || 'usd').toUpperCase();\nconst paymentStatus = session.payment_status || '';\nconst stripeCustomerId = session.customer || '';\nconst sessionId = session.id || '';\nconst phone = session.customer_details?.phone || '';\n\nreturn [{\n  json: {\n    customerEmail,\n    customerName,\n    firstName,\n    lastName,\n    amountTotal,\n    currency,\n    paymentStatus,\n    stripeCustomerId,\n    sessionId,\n    phone,\n    purchaseDate: new Date().toISOString(),\n    product: 'Direct Shippers List'\n  }\n}];"
+        "jsCode": "// Extract customer and purchase data from Stripe webhook\nconst event = $input.first().json.body;\nconst session = event.data.object;\n\nconst customerEmail = session.customer_details?.email || session.customer_email || '';\nconst customerName = session.customer_details?.name || '';\nconst firstName = customerName.split(' ')[0] || '';\nconst lastName = customerName.split(' ').slice(1).join(' ') || '';\nconst amountTotal = (session.amount_total / 100).toFixed(2);\nconst currency = (session.currency || 'usd').toUpperCase();\nconst paymentStatus = session.payment_status || '';\nconst stripeCustomerId = session.customer || '';\nconst sessionId = session.id || '';\nconst phone = session.customer_details?.phone || '';\n\n// Determine product from metadata or line items\nconst product = session.metadata?.product || 'Direct Shippers List';\n\nreturn [{\n  json: {\n    customerEmail,\n    customerName,\n    firstName,\n    lastName,\n    amountTotal,\n    currency,\n    paymentStatus,\n    stripeCustomerId,\n    sessionId,\n    phone,\n    purchaseDate: new Date().toISOString(),\n    product\n  }\n}];"
       },
       "id": "extract-data",
       "name": "Extract Purchase Data",
@@ -55,7 +55,7 @@
     },
     {
       "parameters": {
-        "chatId": "YOUR_TELEGRAM_CHANNEL_ID",
+        "chatId": "-1003784913452",
         "text": "=💰 **New Purchase on BobbyLoads!**\n\n👤 **Customer:** {{ $json.customerName }}\n📧 **Email:** {{ $json.customerEmail }}\n📱 **Phone:** {{ $json.phone }}\n💵 **Amount:** ${{ $json.amountTotal }} {{ $json.currency }}\n📦 **Product:** {{ $json.product }}\n🕐 **Date:** {{ $json.purchaseDate }}\n🔑 **Session:** {{ $json.sessionId }}",
         "additionalFields": {
           "parse_mode": "Markdown"
@@ -105,11 +105,13 @@
       "parameters": {
         "method": "POST",
         "url": "https://api.resend.com/emails",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_Bbze8uXj_N7gDRQz9Eu1ueSnNZ4NYSrjo"
+            },
             {
               "name": "Content-Type",
               "value": "application/json"
@@ -118,20 +120,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"from\": \"BobbyLoads <noreply@bobbyloads.com>\",\n  \"to\": [\"{{ $json.customerEmail }}\"],\n  \"subject\": \"Your Direct Shippers List is Here! 🚛\",\n  \"html\": \"<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'><h1 style='color: #2d3748;'>Thank You for Your Purchase, {{ $json.firstName }}! 🎉</h1><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>We truly appreciate your business! Attached you'll find your <strong>Direct Shippers List</strong> CSV file.</p><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>This list contains verified direct shippers that you can start reaching out to immediately. Each entry includes company name, contact info, and shipping details.</p><h3 style='color: #2d3748;'>Quick Tips:</h3><ul style='font-size: 15px; color: #4a5568; line-height: 1.8;'><li>Open the CSV file in Excel or Google Sheets</li><li>Start with shippers in your preferred lanes</li><li>Reach out via phone for the best response rates</li></ul><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>If you have any questions, don't hesitate to reach out!</p><p style='font-size: 16px; color: #4a5568;'>Best regards,<br><strong>The BobbyLoads Team</strong></p><hr style='border: 1px solid #e2e8f0; margin: 20px 0;'><p style='font-size: 12px; color: #a0aec0;'>Order ID: {{ $json.sessionId }}<br>Amount: ${{ $json.amountTotal }} {{ $json.currency }}</p></div>\",\n  \"attachments\": [\n    {\n      \"filename\": \"direct-shippers-list.csv\",\n      \"path\": \"YOUR_CSV_FILE_URL_HERE\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"from\": \"BobbyLoads <noreply@ava.rankmehigher.com>\",\n  \"to\": [\"{{ $json.customerEmail }}\"],\n  \"subject\": \"Your Direct Shippers List is Here! 🚛\",\n  \"html\": \"<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'><h1 style='color: #2d3748;'>Thank You for Your Purchase, {{ $json.firstName }}! 🎉</h1><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>We truly appreciate your business! Attached you'll find your <strong>Direct Shippers List</strong> CSV file.</p><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>This list contains verified direct shippers that you can start reaching out to immediately. Each entry includes company name, contact info, and shipping details.</p><h3 style='color: #2d3748;'>Quick Tips:</h3><ul style='font-size: 15px; color: #4a5568; line-height: 1.8;'><li>Open the CSV file in Excel or Google Sheets</li><li>Start with shippers in your preferred lanes</li><li>Reach out via phone for the best response rates</li></ul><p style='font-size: 16px; color: #4a5568; line-height: 1.6;'>If you have any questions, don't hesitate to reach out!</p><p style='font-size: 16px; color: #4a5568;'>Best regards,<br><strong>The BobbyLoads Team</strong></p><hr style='border: 1px solid #e2e8f0; margin: 20px 0;'><p style='font-size: 12px; color: #a0aec0;'>Order ID: {{ $json.sessionId }}<br>Amount: ${{ $json.amountTotal }} {{ $json.currency }}</p></div>\",\n  \"attachments\": [\n    {\n      \"filename\": \"direct-shippers-list.csv\",\n      \"path\": \"YOUR_CSV_FILE_URL_HERE\"\n    }\n  ]\n}",
         "options": {}
       },
       "id": "resend-email",
       "name": "Resend: Send CSV + Thank You",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [980, 480],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "RESEND_CREDENTIAL_ID",
-          "name": "Resend API Key"
-        }
-      }
+      "position": [980, 480]
     }
   ],
   "connections": {
